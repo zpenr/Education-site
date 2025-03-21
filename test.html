@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Biology Assistant</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/aframe-extras.animation-mixer@6.1.1/dist/aframe-extras.animation-mixer.min.js"></script>
+    <style>
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .control-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+        }
+        .size-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        .size-button {
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+        }
+        .size-button:active, .control-button:active {
+            background: rgba(200, 200, 200, 0.8);
+        }
+        .chat-container {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+        .chat-input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        .chat-send {
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            max-width: 80%;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+        }
+        .bot-message {
+            background: #e9ecef;
+            color: black;
+            align-self: flex-start;
+        }
+        .loading-dots {
+            display: inline-block;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
+        .error {
+            background: #ffe6e6;
+        }
+        .welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+            text-align: center;
+        }
+        .welcome-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .welcome-title {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .instruction-list {
+            text-align: left;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .instruction-list li {
+            margin: 10px 0;
+            color: #34495e;
+        }
+        .start-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 20px;
+        }
+        .start-button:hover {
+            background: #2980b9;
+        }
+        .feature-icons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .feature-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .feature-icon i {
+            font-size: 24px;
+            margin-bottom: 5px;
+            color: #3498db;
+        }
+        .rotation-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            width: 150px;
+        }
+        .rotation-button {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rotation-button:active {
+            background: rgba(200, 200, 200, 0.8);
+        }
+        .a-enter-vr, .a-enter-ar {
+            display: none !important;
+        }
+        .a-inspector-loader {
+            display: none !important;
+        }
+    </style>
+    <script>
+        // Добавляем поддержку синтеза речи
+        const speechSynthesis = window.speechSynthesis;
+        let maleVoice = null;
+
+        // Загружаем мужской голос при старте
+        speechSynthesis.onvoiceschanged = () => {
+            const voices = speechSynthesis.getVoices();
+            // Ищем русский мужской голос
+            maleVoice = voices.find(voice => voice.lang.includes('ru') && voice.name.toLowerCase().includes('male')) 
+                    || voices.find(voice => voice.lang.includes('ru')) 
+                    || voices[0]; // Если русский голос не найден, берем первый доступный
+        };
+    </script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+  <div id="welcomeScreen" class="welcome-screen">
+    <div class="welcome-content">
+        <h1 class="welcome-title">Добро пожаловать в Биологический AR Ассистент</h1>
+        
+        <div class="feature-icons">
+            <div class="feature-icon">
+                <i>🔍</i>
+                <span>3D Модели</span>
+            </div>
+            <div class="feature-icon">
+                <i>🤖</i>
+                <span>AI Ассистент</span>
+            </div>
+            <div class="feature-icon">
+                <i>🖐️</i>
+                <span>Жесты</span>
+            </div>
+            <div class="feature-icon">
+                <i>🗣️</i>
+                <span>Голосовые ответы</span>
+            </div>
+        </div>
+
+        <div class="instruction-list">
+            <h3>Как пользоваться приложением:</h3>
+            <ol>
+                <li>Разрешите доступ к камере для работы с жестами</li>
+                <li>Задавайте вопросы о различных органах в чате</li>
+                <li>Для перемещения 3D моделей используйте жесты:
+                    <ul>
+                        <li>Сведите большой и указательный пальцы для захвата</li>
+                        <li>Перемещайте руку для движения модели</li>
+                        <li>Разведите пальцы для отпускания</li>
+                    </ul>
+                </li>
+                <li>Используйте кнопки +/- для изменения размера моделей</li>
+                <li>Кнопка "Сбросить позицию" вернёт модель в исходное положение</li>
+                <li>Для вращения органа используйте кнопки в нижнем левом углу</li>
+            </ol>
+        </div>
+
+        <button class="start-button" onclick="startApp()">Начать изучение</button>
+    </div>
+  </div>
+
+  <a-scene embedded arjs>
+    <a-entity 
+        id="teacherModel" 
+        gltf-model="new_teacher/ProfessorManaosTechBehance.gltf" 
+        position="0.75 -0.5 -2" 
+        rotation="0 330 0" 
+        scale="0.4 0.4 0.4">
+    </a-entity>
+    <a-entity id="modelContainer" position="1.5 0 -3" visible="true"></a-entity>
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <div class="controls">
+    <button class="control-button" onclick="resetModels()">Сбросить позицию</button>
+    <button class="control-button" onclick="startNewSession()">Очистить историю</button>
+  </div>
+
+  <div class="size-controls">
+    <button class="size-button" data-action="decrease">-</button>
+    <button class="size-button" data-action="increase">+</button>
+  </div>
+
+  <div class="rotation-controls">
+    <button class="rotation-button" data-axis="y" data-angle="-10">↺</button>
+    <button class="rotation-button" data-axis="x" data-angle="-10">⟲</button>
+    <button class="rotation-button" data-axis="z" data-angle="-10">↶</button>
+    <button class="rotation-button" data-axis="y" data-angle="10">↻</button>
+    <button class="rotation-button" data-axis="x" data-angle="10">⟳</button>
+    <button class="rotation-button" data-axis="z" data-angle="10">↷</button>
+  </div>
+
+  <video id="video" style="display: none" playsinline></video>
+
+  <div class="chat-container">
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot-message">Привет! Я готов помочь тебе изучать биологию. Скажи мне о каком органе ты хочешь узнать больше.</div>
+    </div>
+    <div class="chat-input-container">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Введите сообщение...">
+      <button class="chat-send" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const modelContainer = document.querySelector('#modelContainer');
+    const teacherModel = document.querySelector('#teacherModel');
+    let currentScale = 1;
+    let isGrabbed = false;
+    const GRAB_THRESHOLD = 0.1;
+    const MIN_SCALE = 0.1;
+    const MAX_SCALE = 3;
+
+    const ORGANS = {
+        'сердце': 'heart/scene.gltf',
+        'легкие': 'lungs/scene.gltf',
+        'кишечник': 'intestines/scene.gltf',
+        'мозг': 'brain/untitled.glb',
+        'печень': 'liver/scene.gltf',
+        'желудок': 'stomach/scene.gltf'
+    };
+    const OPENROUTER_API_KEY = "YOUR_API_KEY"; // Замените на ваш API ключ
+    const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+    let currentOrgan = null;
+
+    // Добавим после существующих констант
+    const SESSION_KEY = 'chat_session_id';
+    const MAX_MESSAGES_PER_SESSION = 10;
+
+    // Обновим функцию generateSessionId для большей уникальности
+    function generateSessionId() {
+        const timestamp = Date.now().toString(36);
+        const randomStr = Math.random().toString(36).substr(2);
+        const browserFingerprint = window.navigator.userAgent.replace(/\D+/g, '').substr(0, 5);
+        return `${timestamp}-${browserFingerprint}-${randomStr}`;
+    }
+
+    // Обновим функцию getCurrentSessionId
+    function getCurrentSessionId() {
+        let sessionId = localStorage.getItem(SESSION_KEY);
+        if (!sessionId || sessionId.split('-').length !== 3) { // Проверка валидности существующей сессии
+            sessionId = generateSessionId();
+            localStorage.setItem(SESSION_KEY, sessionId);
+            
+            // Очищаем старые сессии
+            cleanupOldSessions();
+        }
+        return sessionId;
+    }
+
+    // Добавим функцию очистки старых сессий
+    function cleanupOldSessions() {
+        const MAX_SESSION_AGE = 7 * 24 * 60 * 60 * 1000; // 7 дней
+        const now = Date.now();
+        
+        // Перебираем все ключи в localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('messages_')) {
+                const sessionId = key.replace('messages_', '');
+                const sessionTimestamp = parseInt(sessionId.split('-')[0], 36);
+                
+                // Удаляем сессии старше 7 дней
+                if (now - sessionTimestamp > MAX_SESSION_AGE) {
+                    localStorage.removeItem(key);
+                }
+            }
+        }
+    }
+
+    function getSessionMessages(sessionId) {
+        const messages = localStorage.getItem(`messages_${sessionId}`);
+        return messages ? JSON.parse(messages) : [];
+    }
+
+    function saveSessionMessages(sessionId, messages) {
+        // Ограничиваем количество сообщений в сессии
+        if (messages.length > MAX_MESSAGES_PER_SESSION) {
+            messages = messages.slice(-MAX_MESSAGES_PER_SESSION);
+        }
+        localStorage.setItem(`messages_${sessionId}`, JSON.stringify(messages));
+    }
+
+    // Добавим переменные для отслеживания зажатых кнопок
+    let rotationIntervals = {
+        x: null,
+        y: null,
+        z: null
+    };
+    let sizeIntervals = {
+        increase: null,
+        decrease: null
+    };
+
+    // Обновим функцию resetModels
+    function resetModels() {
+        const currentModel = modelContainer.querySelector('a-entity');
+        if (!currentModel) return;
+
+        const modelPath = currentModel.getAttribute('gltf-model');
+        
+        // Сбрасываем позицию и вращение контейнера
+        modelContainer.setAttribute('position', '1.5 0 -3');
+        modelContainer.setAttribute('rotation', '0 0 0');
+        
+        // Сбрасываем вращение самой модели
+        currentModel.setAttribute('rotation', '0 0 0');
+        
+        // Устанавливаем начальные параметры в зависимости от органа
+        switch(modelPath) {
+            case 'heart/scene.gltf':
+                currentModel.setAttribute('scale', '0.3 0.3 0.3');
+                currentModel.setAttribute('position', '-1.5 -0.2 0');
+                break;
+            case 'brain/untitled.glb':
+                currentModel.setAttribute('scale', '0.15 0.15 0.15');
+                currentModel.setAttribute('position', '-1.3 -0.1 0');
+                break;
+            case 'intestines/scene.gltf':
+                currentModel.setAttribute('scale', '0.3 0.3 0.3');
+                currentModel.setAttribute('position', '-1.6 -0.1 0');
+                break;
+            case 'liver/scene.gltf':
+                currentModel.setAttribute('scale', '0.01 0.01 0.01');
+                currentModel.setAttribute('rotation', '75 0 0');
+                currentModel.setAttribute('position', '-1.4 0.2 0');
+                break;
+            case 'stomach/scene.gltf':
+                currentModel.setAttribute('scale', '0.08 0.08 0.08');
+                currentModel.setAttribute('position', '-1.4 0.3 0');
+                break;
+            case 'lungs/scene.gltf':
+                currentModel.setAttribute('scale', '2 2 2');
+                currentModel.setAttribute('position', '0.25 -2.8 0');
+                break;
+        }
+        
+        currentScale = 1;
+    }
+
+    function changeSize(delta) {
+        const model = modelContainer.querySelector('a-entity');
+        if (!model) return;
+
+        const currentModelScale = model.getAttribute('scale') || { x: 1, y: 1, z: 1 };
+        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, currentScale + delta));
+        
+        // Применяем масштаб к самой модели, а не к контейнеру
+        model.setAttribute('scale', {
+            x: currentModelScale.x * (1 + delta),
+            y: currentModelScale.y * (1 + delta),
+            z: currentModelScale.z * (1 + delta)
+        });
+        
+        currentScale = newScale;
+    }
+
+    async function showOrganModel(organName) {
+        const modelPath = ORGANS[organName];
+        if (!modelPath) return;
+
+        while (modelContainer.firstChild) {
+            modelContainer.removeChild(modelContainer.firstChild);
+        }
+
+        const model = document.createElement('a-entity');
+        model.setAttribute('gltf-model', modelPath);
+        switch(modelPath){
+            case 'heart/scene.gltf':
+                model.setAttribute('scale', '0.3 0.3 0.3');
+                model.setAttribute('position', '-1.5 -0.2 0');
+                break
+            case 'brain/scene.gltf':
+                model.setAttribute('scale', '0.15 0.15 0.15');
+                model.setAttribute('position', '-1.3 -0.1 0');
+                break
+            case 'intestines/scene.gltf':
+                model.setAttribute('scale', '0.3 0.3 0.3');
+                model.setAttribute('position', '-1.6 -0.1 0');
+                break
+            case 'liver/scene.gltf':
+                model.setAttribute('scale', '0.01 0.01 0.01');
+                model.setAttribute('rotation', '75 0 0');
+                model.setAttribute('position', '-1.4 0.2 0');
+                break
+            case 'stomach/scene.gltf':
+                model.setAttribute('scale', '0.08 0.08 0.08');
+                model.setAttribute('position', '-1.4 0.3 0');
+                break
+            case 'lungs/scene.gltf':
+                model.setAttribute('scale', '2 2 2');
+                model.setAttribute('position', '0.25 -2.8 0');
+                break
+        }
+
+        modelContainer.appendChild(model);
+    }
+
+    function checkForOrgan(message) {
+        const words = message.toLowerCase().split(' ');
+        for (let word of words) {
+            if (ORGANS[word]) {
+                return word;
+            }
+        }
+        return null;
+    }
+
+    async function getBotResponse(message) {
+        try {
+            const sessionId = getCurrentSessionId();
+            const sessionMessages = getSessionMessages(sessionId);
+            
+            // Формируем контекст из предыдущих сообщений
+            const contextMessages = [
+                {
+                    role: "system",
+                    content: "Ты ассистент который должен помочь пользователю разобраться в биологии. Твои ответы дожны быть понятны и кратки на сколько это возвожно. Свои рассуждения писать не нужно."
+                },
+                ...sessionMessages.map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                })),
+                {
+                    role: "user",
+                    content: message
+                }
+            ];
+
+            const response = await fetch(OPENROUTER_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer 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`,
+                    'HTTP-Referer': window.location.href,
+                    'X-Title': 'Cube Control Chat'
+                },
+                body: JSON.stringify({
+                    model: "qwen/qwq-32b:free",
+                    messages: contextMessages,
+                    temperature: 0.7
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const botResponse = data.choices[0].message.content;
+
+            // Сохраняем сообщения в сессию
+            sessionMessages.push(
+                { role: "user", content: message },
+                { role: "assistant", content: botResponse }
+            );
+            saveSessionMessages(sessionId, sessionMessages);
+
+            return botResponse;
+        } catch (error) {
+            console.error('Ошибка при получении ответа от OpenRouter:', error);
+            return 'Извините, произошла ошибка при получении ответа. Пожалуйста, попробуйте позже.';
+        }
+    }
+
+    // Добавляем переменную для отслеживания имени анимации
+    let currentAnimation = '';
+    let isAnimating = false;
+
+    function startTeacherAnimation() {
+        if (isAnimating) return;
+        
+        const teacher = document.querySelector('#teacherModel');
+        const model = teacher.components['gltf-model'].model;
+        if (model?.animations?.length) {
+            currentAnimation = model.animations[0].name;
+            teacher.setAttribute('animation-mixer', {
+                clip: currentAnimation,
+                loop: 'repeat',
+                timeScale: 1
+            });
+            isAnimating = true;
+        }
+    }
+
+    function stopTeacherAnimation() {
+        const teacher = document.querySelector('#teacherModel');
+        if (currentAnimation) {
+            teacher.removeAttribute('animation-mixer');
+            currentAnimation = '';
+            isAnimating = false;
+        }
+    }
+
+    // Добавляем обработчик загрузки модели
+    document.querySelector('#teacherModel').addEventListener('model-loaded', function(e) {
+        console.log('Модель учителя загружена');
+        const model = e.detail.model;
+        if (model.animations.length > 0) {
+            console.log('Доступные анимации:', model.animations.map(a => a.name));
+        }
+    });
+
+    // Обновляем функцию speakText
+    function speakText(text) {
+        return new Promise((resolve) => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = maleVoice;
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            utterance.lang = 'ru-RU';
+
+            // Запускаем анимацию только когда начинается озвучка
+            utterance.onstart = () => {
+                startTeacherAnimation();
+            };
+
+            // Останавливаем анимацию когда озвучка заканчивается
+            utterance.onend = () => {
+                stopTeacherAnimation();
+                resolve();
+            };
+
+            utterance.onerror = () => {
+                stopTeacherAnimation();
+                resolve();
+            };
+
+            speechSynthesis.speak(utterance);
+        });
+    }
+
+    // Обновляем функцию sendMessage
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const messages = document.getElementById('chatMessages');
+        const userMessage = input.value.trim();
+
+        if (userMessage) {
+            const organ = checkForOrgan(userMessage);
+            
+            if (organ) {
+                console.log(`Обнаружен орган: ${organ}`);
+                await showOrganModel(organ);
+                
+                const messageWithoutOrgan = userMessage.slice(0, -(organ.length)).trim();
+                if (messageWithoutOrgan) {
+                    messages.insertAdjacentHTML('afterbegin', 
+                        `<div class="message user-message">${messageWithoutOrgan}</div>`
+                    );
+                }
+            } else {
+                messages.insertAdjacentHTML('afterbegin', 
+                    `<div class="message user-message">${userMessage}</div>`
+                );
+            }
+
+            messages.insertAdjacentHTML('afterbegin', 
+                `<div class="message bot-message" id="loading-message">
+                    Печатает<span class="loading-dots">...</span>
+                </div>`
+            );
+
+            try {
+                const botResponse = await getBotResponse(userMessage);
+                
+                const loadingMessage = document.getElementById('loading-message');
+                if (loadingMessage) {
+                    loadingMessage.remove();
+                }
+
+                // Проверяем, не пустой ли ответ
+                const finalResponse = botResponse?.trim() 
+                    ? botResponse 
+                    : 'Прости, что-то я задумался. Задай вопрос ещё раз, пожалуйста.';
+
+                messages.insertAdjacentHTML('afterbegin', 
+                    `<div class="message bot-message">${finalResponse}</div>`
+                );
+
+                // Озвучиваем ответ и запускаем анимацию
+                await speakText(finalResponse);
+            } catch (error) {
+                console.error('Ошибка при отправке сообщения:', error);
+                
+                const loadingMessage = document.getElementById('loading-message');
+                if (loadingMessage) {
+                    loadingMessage.remove();
+                }
+
+                messages.insertAdjacentHTML('afterbegin', 
+                    `<div class="message bot-message error">Произошла ошибка при получении ответа. Попробуйте еще раз.</div>`
+                );
+            }
+
+            input.value = '';
+        }
+    }
+
+    // Добавляем обработчик для остановки речи при необходимости
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            speechSynthesis.cancel();
+            stopTeacherAnimation();
+        }
+    });
+
+    function setupHandTracking() {
+        return new Promise((resolve, reject) => {
+            try {
+                const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.7,
+                    minTrackingConfidence: 0.7
+                });
+
+                hands.onResults((results) => {
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length) {
+                        const hand = results.multiHandLandmarks[0];
+                        const thumb = hand[4];
+                        const index = hand[8];
+                        
+                        const pinchDistance = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+                        const fingerCenter = {
+                            x: (thumb.x + index.x) / 2,
+                            y: (thumb.y + index.y) / 2
+                        };
+
+                        if (pinchDistance < GRAB_THRESHOLD) {
+                            const currentPos = modelContainer.getAttribute('position');
+                            const targetX = (fingerCenter.x - 0.5) * 4 + 1.5;
+                            const targetY = -(fingerCenter.y - 0.5) * 3;
+                            const lerpFactor = 0.3;
+                            
+                            modelContainer.setAttribute('position', {
+                                x: currentPos.x + (targetX - currentPos.x) * lerpFactor,
+                                y: currentPos.y + (targetY - currentPos.y) * lerpFactor,
+                                z: currentPos.z
+                            });
+                        }
+                    }
+                });
+
+                const camera = new Camera(video, {
+                    onFrame: async () => await hands.send({ image: video }),
+                    width: 640,
+                    height: 480
+                });
+
+                camera.start().then(resolve).catch(reject);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    function startApp() {
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        welcomeScreen.style.opacity = '0';
+        welcomeScreen.style.transition = 'opacity 0.5s';
+        
+        setTimeout(() => {
+            welcomeScreen.style.display = 'none';
+            const startButton = document.createElement('button');
+            startButton.className = 'control-button';
+            startButton.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%);';
+            startButton.textContent = 'Вклюичть отслежевание рук';
+            document.body.appendChild(startButton);
+
+            startButton.onclick = () => {
+                startButton.disabled = true;
+                startButton.textContent = 'Запрашиваем доступ...';
+                setupHandTracking()
+                    .then(() => startButton.remove())
+                    .catch(error => {
+                        startButton.disabled = false;
+                        startButton.textContent = 'Повторить запрос';
+                        console.error(error);
+                    });
+            };
+        }, 500);
+    }
+
+    // Добавим функцию startNewSession
+    function startNewSession() {
+        const sessionId = generateSessionId();
+        localStorage.setItem(SESSION_KEY, sessionId);
+        localStorage.removeItem(`messages_${sessionId}`); // Очищаем сообщения новой сессии
+        
+        // Очищаем чат на экране
+        const messages = document.getElementById('chatMessages');
+        messages.innerHTML = '<div class="message bot-message">Привет! Я готов помочь тебе изучать биологию. Скажи мне о каком органе ты хочешь узнать больше.</div>';
+    }
+
+    // Добавим загрузку сообщений при старте
+    document.addEventListener('DOMContentLoaded', () => {
+        const sessionId = getCurrentSessionId();
+        const sessionMessages = getSessionMessages(sessionId);
+        const messages = document.getElementById('chatMessages');
+        
+        // Очищаем существующие сообщения
+        messages.innerHTML = '';
+        
+        // Загружаем сохраненные сообщения
+        sessionMessages.forEach(msg => {
+            const messageClass = msg.role === 'user' ? 'user-message' : 'bot-message';
+            messages.insertAdjacentHTML('beforeend', 
+                `<div class="message ${messageClass}">${msg.content}</div>`
+            );
+        });
+        
+        // Если нет сохраненных сообщений, показываем приветствие
+        if (sessionMessages.length === 0) {
+            messages.innerHTML = '<div class="message bot-message">Привет! Я готов помочь тебе изучать биологию. Скажи мне о каком органе ты хочешь узнать больше.</div>';
+        }
+        
+        // Добавляем обработчик Enter для чата
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        setupRotationControls();
+        setupSizeControls();
+    });
+
+    function rotate(axis, angle) {
+        const model = modelContainer.querySelector('a-entity');
+        if (!model) return;
+
+        const currentRotation = model.getAttribute('rotation') || {x: 0, y: 0, z: 0};
+        currentRotation[axis] = ((currentRotation[axis] || 0) + angle) % 360;
+        model.setAttribute('rotation', `${currentRotation.x} ${currentRotation.y} ${currentRotation.z}`);
+    }
+
+    // Обновим обработчики для кнопок вращения
+    function setupRotationControls() {
+        const rotationButtons = document.querySelectorAll('.rotation-button');
+        rotationButtons.forEach(button => {
+            const axis = button.getAttribute('data-axis');
+            const angle = parseInt(button.getAttribute('data-angle'));
+            
+            button.addEventListener('mousedown', () => {
+                rotate(axis, angle);
+                rotationIntervals[axis] = setInterval(() => rotate(axis, angle), 100);
+            });
+            
+            button.addEventListener('mouseup', () => {
+                if (rotationIntervals[axis]) {
+                    clearInterval(rotationIntervals[axis]);
+                    rotationIntervals[axis] = null;
+                }
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                if (rotationIntervals[axis]) {
+                    clearInterval(rotationIntervals[axis]);
+                    rotationIntervals[axis] = null;
+                }
+            });
+        });
+    }
+
+    // Обновим обработчики для кнопок изменения размера
+    function setupSizeControls() {
+        const increaseButton = document.querySelector('.size-button[data-action="increase"]');
+        const decreaseButton = document.querySelector('.size-button[data-action="decrease"]');
+        
+        increaseButton.addEventListener('mousedown', () => {
+            changeSize(0.1);
+            sizeIntervals.increase = setInterval(() => changeSize(0.1), 100);
+        });
+        
+        decreaseButton.addEventListener('mousedown', () => {
+            changeSize(-0.1);
+            sizeIntervals.decrease = setInterval(() => changeSize(-0.1), 100);
+        });
+        
+        const stopSizeInterval = (type) => {
+            if (sizeIntervals[type]) {
+                clearInterval(sizeIntervals[type]);
+                sizeIntervals[type] = null;
+            }
+        };
+        
+        [increaseButton, decreaseButton].forEach(button => {
+            const action = button.getAttribute('data-action');
+            button.addEventListener('mouseup', () => stopSizeInterval(action));
+            button.addEventListener('mouseleave', () => stopSizeInterval(action));
+        });
+    }
+  </script>
+</body>
+</html>

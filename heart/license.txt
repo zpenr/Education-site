@@ -1,0 +1,11 @@
+Model Information:
+* title:	Heart (Сердце)
+* source:	https://sketchfab.com/3d-models/heart-08ce2a3e33644220aa696ba58f2be383
+* author:	Yarelon (https://sketchfab.com/yarelon111)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Heart (Сердце)" (https://sketchfab.com/3d-models/heart-08ce2a3e33644220aa696ba58f2be383) by Yarelon (https://sketchfab.com/yarelon111) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
