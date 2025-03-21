@@ -224,9 +224,7 @@
         speechSynthesis.onvoiceschanged = () => {
             const voices = speechSynthesis.getVoices();
             // Ищем русский мужской голос
-            maleVoice = voices.find(voice => voice.lang.includes('ru') && voice.name.toLowerCase().includes('male')) 
-                    || voices.find(voice => voice.lang.includes('ru')) 
-                    || voices[0]; // Если русский голос не найден, берем первый доступный
+            maleVoice = voices[1]; // Если русский голос не найден, берем первый доступный
         };
     </script>
 </head>
@@ -549,7 +547,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer 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`,
+                    'Authorization': `Bearer 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`,
                     'HTTP-Referer': window.location.href,
                     'X-Title': 'Cube Control Chat'
                 },
@@ -679,7 +677,7 @@
                     Печатает<span class="loading-dots">...</span>
                 </div>`
             );
-
+              
             try {
                 const botResponse = await getBotResponse(userMessage);
                 
@@ -712,7 +710,7 @@
                 );
             }
 
-            input.value = '';
+            input.value = ''; 
         }
     }
 
